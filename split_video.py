@@ -6,7 +6,7 @@ def list_videos():
     return [f for f in os.listdir('.') if f.lower().endswith(('.mp4', '.mov', '.avi', '.mkv'))]
 
 def split_file(video_file, chunk_size_mb):
-    chunk_size = chunk_size_mb * 1024 * 1024
+    chunk_size = int(chunk_size_mb * 1024 * 1024)
     video_name = os.path.splitext(os.path.basename(video_file))[0]
     out_dir = os.path.join(os.getcwd(), video_name)
 
@@ -50,10 +50,27 @@ def main():
     for i, v in enumerate(videos):
         print(f"{i + 1}. {v}")
 
-    choice = int(input("Enter number: ")) - 1
+    while True:
+        try:
+            choice = int(input("Enter number: ")) - 1
+            if 0 <= choice < len(videos):
+                break
+            else:
+                print(f"Please enter a number between 1 and {len(videos)}.")
+        except ValueError:
+            print("Please enter a valid number.")
+
     selected_video = videos[choice]
 
-    size = float(input("Enter chunk size in MB (e.g. 25): "))
+    while True:
+        try:
+            size = float(input("Enter chunk size in MB (e.g. 25): "))
+            if size > 0:
+                break
+            else:
+                print("Size must be greater than 0.")
+        except ValueError:
+            print("Please enter a valid number.")
 
     split_file(selected_video, size)
 
