@@ -2,6 +2,8 @@
 
 > **Splitra** is a simple Python-based command-line tool to split large video files into smaller parts (e.g. 25 MB chunks) and later reconstruct them using a header file. This is ideal for uploading large videos to platforms like GitHub which have individual file size limits.
 
+<img src="img/img (1).png">
+
 ---
 
 ## 📃 Project Description
@@ -104,6 +106,8 @@ Splitra/
 
 ## 🧪 Example Usage
 
+<img src="img/img (2).png">
+
 ### 1. Split a video:
 
 ```bash
@@ -116,10 +120,12 @@ python split_video.py
 
 ---
 
+<img src="img/img (3).png">
+
 ### 2. Recombine the video:
 
 ```bash
-python recombine_video.py
+python export_video.py
 ```
 
 * Select folder to export
