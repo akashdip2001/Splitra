@@ -133,3 +133,8 @@ python export_video.py
 * Optionally deletes the split folder after success
 
 ---
+
+## 🎯 project demonstration
+
+https://github.com/user-attachments/assets/b992d648-f023-4c1a-8933-595769b5c66c
+
