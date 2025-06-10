@@ -138,3 +138,164 @@ python export_video.py
 
 https://github.com/user-attachments/assets/b992d648-f023-4c1a-8933-595769b5c66c
 
+---
+
+</br>
+</br>
+
+<div style="display: flex; align-items: center; gap: 10px;" align="center">
+  
+# ⭐ split_video.py ⭐
+</div>
+
+</br>
+</br>
+
+```python
+import os
+import json
+import sys
+
+def list_videos():
+    return [f for f in os.listdir('.') if f.lower().endswith(('.mp4', '.mov', '.avi', '.mkv'))]
+
+def split_file(video_file, chunk_size_mb):
+    chunk_size = int(chunk_size_mb * 1024 * 1024)
+    video_name = os.path.splitext(os.path.basename(video_file))[0]
+    out_dir = os.path.join(os.getcwd(), video_name)
+
+    os.makedirs(out_dir, exist_ok=True)
+
+    chunks = []
+    file_number = 0
+    file_size = os.path.getsize(video_file)
+
+    with open(video_file, 'rb') as f:
+        while True:
+            chunk = f.read(chunk_size)
+            if not chunk:
+                break
+            chunk_name = f"chunk_{file_number:03d}"
+            chunk_path = os.path.join(out_dir, chunk_name)
+            with open(chunk_path, 'wb') as chunk_file:
+                chunk_file.write(chunk)
+            chunks.append(chunk_name)
+            file_number += 1
+            percent = round((f.tell() / file_size) * 100, 2)
+            print(f"[{percent}%] Split: {chunk_name}")
+
+    manifest = {
+        "original_file": os.path.basename(video_file),
+        "chunk_count": file_number,
+        "chunks": chunks
+    }
+    with open(os.path.join(out_dir, "manifest.json"), "w") as mf:
+        json.dump(manifest, mf)
+
+    print(f"\n✅ Splitting completed. {file_number} chunks saved in folder: {video_name}/")
+
+def main():
+    videos = list_videos()
+    if not videos:
+        print("No video files found in current directory.")
+        return
+
+    print("Select a video to split:")
+    for i, v in enumerate(videos):
+        print(f"{i + 1}. {v}")
+
+    while True:
+        try:
+            choice = int(input("Enter number: ")) - 1
+            if 0 <= choice < len(videos):
+                break
+            else:
+                print(f"Please enter a number between 1 and {len(videos)}.")
+        except ValueError:
+            print("Please enter a valid number.")
+
+    selected_video = videos[choice]
+
+    while True:
+        try:
+            size = float(input("Enter chunk size in MB (e.g. 25): "))
+            if size > 0:
+                break
+            else:
+                print("Size must be greater than 0.")
+        except ValueError:
+            print("Please enter a valid number.")
+
+    split_file(selected_video, size)
+
+if __name__ == "__main__":
+    main()
+```
+</br>
+</br>
+
+<div style="display: flex; align-items: center; gap: 10px;" align="center">
+  
+# ⭐ export_video.py ⭐
+</div>
+
+</br>
+</br>
+
+```python
+import os
+import json
+import shutil
+
+def find_video_folders():
+    return [d for d in os.listdir('.') if os.path.isdir(d) and 'manifest.json' in os.listdir(d)]
+
+def recombine(folder_name):
+    manifest_path = os.path.join(folder_name, "manifest.json")
+    with open(manifest_path, "r") as mf:
+        manifest = json.load(mf)
+
+    output_dir = "output"
+    os.makedirs(output_dir, exist_ok=True)
+    output_file_path = os.path.join(output_dir, manifest['original_file'])
+
+    total_chunks = len(manifest['chunks'])
+
+    with open(output_file_path, 'wb') as out:
+        for i, chunk_name in enumerate(manifest['chunks']):
+            chunk_path = os.path.join(folder_name, chunk_name)
+            with open(chunk_path, 'rb') as chunk_file:
+                out.write(chunk_file.read())
+            percent = round(((i + 1) / total_chunks) * 100, 2)
+            print(f"[{percent}%] Recombining: {chunk_name}")
+
+    print(f"\n✅ Video successfully rebuilt at: {output_file_path}")
+
+    # Ask whether to delete folder
+    user_input = input(f"Do you want to delete the folder '{folder_name}' with the split files? (y/n): ").strip().lower()
+    if user_input == 'y':
+        shutil.rmtree(folder_name)
+        print(f"🗑️ Deleted folder: {folder_name}")
+    else:
+        print("📁 Split files kept for future use.")
+
+def main():
+    folders = find_video_folders()
+    if not folders:
+        print("No video folders with manifest.json found.")
+        return
+
+    print("Select a video folder to export:")
+    for i, folder in enumerate(folders):
+        print(f"{i + 1}. {folder}")
+
+    choice = int(input("Enter number: ")) - 1
+    selected_folder = folders[choice]
+
+    recombine(selected_folder)
+
+if __name__ == "__main__":
+    main()
+```
+
+## 🟢 combine this two script into one `splitra.py`
