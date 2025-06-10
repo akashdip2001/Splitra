@@ -4,6 +4,8 @@ import os
 import sys
 import json
 import subprocess
+import threading
+import time
 
 def install_dependencies():
     try:
@@ -140,6 +142,23 @@ def recombine_video():
             print(Fore.YELLOW + f"Folder '{folder}' not empty, manual check recommended.")
         print(Fore.GREEN + "Chunk files deleted successfully.")
 
+# This function waits for user input with a timeout
+def input_with_timeout(prompt, timeout=3):
+    user_input = [None]
+
+    def get_input():
+        user_input[0] = input(prompt)
+
+    thread = threading.Thread(target=get_input)
+    thread.daemon = True
+    thread.start()
+
+    thread.join(timeout)
+    if thread.is_alive():
+        print("\nNo input received. Defaulting to 'no'.")
+        return 'n'
+    return user_input[0]
+
 def main():
     print_banner()
     print("What would you like to do?")
@@ -184,7 +203,7 @@ def main():
             print("Please enter 1 or 2.")
 
     if has_colors:
-        cleanup = input("Do you want to remove installed libraries (to save space)? (y/N): ").strip().lower()
+        cleanup = input_with_timeout("Do you want to remove installed libraries (to save space)? (y/N): ", 3).strip().lower()
         if cleanup == 'y':
             os.system(f"{sys.executable} -m pip uninstall -y colorama pyfiglet termcolor tqdm")
             print("Dependencies removed.")
