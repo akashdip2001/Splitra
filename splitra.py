@@ -4,44 +4,8 @@ import os
 import sys
 import json
 import subprocess
-import platform
-import time
 
-installed_now = []
-
-def check_python():
-    try:
-        subprocess.run(["python", "--version"], check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-        return True
-    except Exception:
-        return False
-
-def prompt_python_download():
-    print("\nPython is not installed or not in PATH.")
-    choice = input("Would you like to download and install Python? (y/N): ").strip().lower()
-    if choice != 'y':
-        print("Cannot proceed without Python. Exiting.")
-        sys.exit(1)
-
-    system = platform.system()
-    if system == "Windows":
-        url = "https://www.python.org/ftp/python/3.12.3/python-3.12.3-amd64.exe"
-        print("Opening browser to download Python installer...")
-        os.system(f"start {url}")
-    elif system == "Linux":
-        print("You can install Python with your package manager, e.g.,")
-        print("sudo apt install python3")
-    else:
-        print("Unsupported system. Please install Python manually from https://www.python.org/")
-        sys.exit(1)
-
-    input("After installing Python, press Enter to continue...")
-    if not check_python():
-        print("Python is still not available. Exiting.")
-        sys.exit(1)
-
-def safe_imports():
-    global installed_now
+def install_dependencies():
     try:
         from colorama import init
         from termcolor import colored
@@ -49,38 +13,37 @@ def safe_imports():
         from tqdm import tqdm
         return True
     except ImportError:
+        import urllib.request
         try:
-            print("Installing required modules...")
+            urllib.request.urlopen('https://pypi.org', timeout=3)
             subprocess.check_call([sys.executable, "-m", "pip", "install", "colorama", "pyfiglet", "termcolor", "tqdm"])
-            installed_now.extend(["colorama", "pyfiglet", "termcolor", "tqdm"])
             return True
         except Exception:
-            print("No internet connection or pip failed. Running in basic mode.")
+            print("No internet connection. Running in basic mode without colors.")
             return False
 
-fancy = False
-if not check_python():
-    prompt_python_download()
+has_colors = install_dependencies()
 
-if safe_imports():
-    from colorama import init
+if has_colors:
+    from colorama import init, Fore, Style
     from termcolor import colored
     import pyfiglet
     from tqdm import tqdm
     init(autoreset=True)
-    fancy = True
 else:
-    tqdm = lambda x, **kwargs: x
+    Fore = type("Fore", (), {"GREEN": "", "YELLOW": "", "RED": "", "CYAN": ""})()
+    Style = type("Style", (), {"BRIGHT": "", "RESET_ALL": ""})()
+    def colored(text, *args, **kwargs): return text
+    def tqdm(x, **kwargs): return x
+    class pyfiglet:
+        @staticmethod
+        def figlet_format(text): return text
 
 def print_banner():
-    if fancy:
-        banner = pyfiglet.figlet_format("Splitra")
-        print(colored(banner, "cyan"))
-        print(colored("Created by Akashdip Mahapatra".center(80, " "), "yellow"))
-        print("-" * 80)
-    else:
-        print("Splitra - by Akashdip Mahapatra")
-        print("-" * 40)
+    banner = pyfiglet.figlet_format("Splitra")
+    print(colored(banner, "cyan"))
+    print(colored("Created by Akashdip Mahapatra".center(80, " "), "yellow"))
+    print("-" * 80)
 
 def list_videos():
     return [f for f in os.listdir('.') if f.lower().endswith(('.mp4', '.avi', '.mkv'))]
@@ -123,8 +86,8 @@ if __name__ == "__main__":
     recombine()
 """)
 
-    print("Video successfully split into folder:", folder_name)
-    print(f"Use '{folder_name}/export_video.py' to recombine without this tool.")
+    print(Fore.GREEN + f"Video successfully split into folder: {folder_name}")
+    print(Fore.YELLOW + f"Use '{folder_name}/export_video.py' to recombine without this tool.")
 
 def recombine_video():
     folders = [d for d in os.listdir('.') if os.path.isdir(d) and 'header.json' in os.listdir(d)]
@@ -134,7 +97,7 @@ def recombine_video():
 
     print("Select folder to export video from:")
     for i, f in enumerate(folders):
-        print(f"{i + 1}. {f}")
+        print(f"{i + 1}. {Fore.CYAN + Style.BRIGHT}{f}{Style.RESET_ALL}")
 
     while True:
         try:
@@ -158,47 +121,24 @@ def recombine_video():
             with open(part_path, 'rb') as infile:
                 outfile.write(infile.read())
 
-    print("Video exported successfully to", output_path)
+    print(Fore.GREEN + f"Video exported successfully to {output_path}")
 
     delete = input("Do you want to delete the chunk files? (y/N): ").strip().lower()
     if delete == 'y':
         for part in data['parts']:
             os.remove(os.path.join(folder, part))
         os.remove(os.path.join(folder, 'header.json'))
-        print("Chunk files deleted.")
 
-def cleanup_prompt():
-    global installed_now
-    if not installed_now:
-        return
-    print("\nWould you like to uninstall the installed packages? (y/N) [auto cancel in 3s]")
-    print("Installed packages in this session:", ', '.join(installed_now))
-    print("Press 'y' to uninstall or wait...")
-    start = time.time()
-    while time.time() - start < 3:
-        if os.name == 'nt':
-            import msvcrt
-            if msvcrt.kbhit():
-                ch = msvcrt.getch().decode().lower()
-                if ch == 'y':
-                    subprocess.call([sys.executable, "-m", "pip", "uninstall", "-y"] + installed_now)
-                    print("Packages uninstalled.")
-                    return
-                else:
-                    print("Keeping packages.")
-                    return
+        export_script = os.path.join(folder, 'export_video.py')
+        if os.path.exists(export_script):
+            os.remove(export_script)
+
+        if not os.listdir(folder):
+            os.rmdir(folder)
+            print(Fore.RED + f"Chunk folder '{folder}' removed.")
         else:
-            import select
-            if select.select([sys.stdin], [], [], 3 - (time.time() - start))[0]:
-                ch = sys.stdin.readline().strip().lower()
-                if ch == 'y':
-                    subprocess.call([sys.executable, "-m", "pip", "uninstall", "-y"] + installed_now)
-                    print("Packages uninstalled.")
-                    return
-                else:
-                    print("Keeping packages.")
-                    return
-    print("Time expired. Keeping packages.")
+            print(Fore.YELLOW + f"Folder '{folder}' not empty, manual check recommended.")
+        print(Fore.GREEN + "Chunk files deleted successfully.")
 
 def main():
     print_banner()
@@ -215,7 +155,7 @@ def main():
                 return
             print("Select a video to split:")
             for i, v in enumerate(videos):
-                print(f"{i + 1}. {v}")
+                print(f"{i + 1}. {Fore.CYAN + Style.BRIGHT}{v}{Style.RESET_ALL}")
             while True:
                 try:
                     v_choice = int(input("Enter number: ")) - 1
@@ -242,7 +182,12 @@ def main():
             break
         else:
             print("Please enter 1 or 2.")
-    cleanup_prompt()
+
+    if has_colors:
+        cleanup = input("Do you want to remove installed libraries (to save space)? (y/N): ").strip().lower()
+        if cleanup == 'y':
+            os.system(f"{sys.executable} -m pip uninstall -y colorama pyfiglet termcolor tqdm")
+            print("Dependencies removed.")
 
 if __name__ == "__main__":
     main()
