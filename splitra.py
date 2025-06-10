@@ -3,29 +3,48 @@
 import os
 import sys
 import json
+import subprocess
+import threading
+import time
 
-# Auto-install required packages if not present
-try:
-    from colorama import init
+def install_dependencies():
+    try:
+        from colorama import init
+        from termcolor import colored
+        import pyfiglet
+        from tqdm import tqdm
+        return True
+    except ImportError:
+        import urllib.request
+        try:
+            urllib.request.urlopen('https://pypi.org', timeout=3)
+            subprocess.check_call([sys.executable, "-m", "pip", "install", "colorama", "pyfiglet", "termcolor", "tqdm"])
+            return True
+        except Exception:
+            print("No internet connection. Running in basic mode without colors.")
+            return False
+
+has_colors = install_dependencies()
+
+if has_colors:
+    from colorama import init, Fore, Style
     from termcolor import colored
     import pyfiglet
     from tqdm import tqdm
-except ImportError:
-    import subprocess
-    subprocess.check_call([sys.executable, "-m", "pip", "install", "colorama", "pyfiglet", "termcolor", "tqdm"])
-    from colorama import init
-    from termcolor import colored
-    import pyfiglet
-    from tqdm import tqdm
-
-from colorama import Fore, Style
-
-init(autoreset=True)
+    init(autoreset=True)
+else:
+    Fore = type("Fore", (), {"GREEN": "", "YELLOW": "", "RED": "", "CYAN": ""})()
+    Style = type("Style", (), {"BRIGHT": "", "RESET_ALL": ""})()
+    def colored(text, *args, **kwargs): return text
+    def tqdm(x, **kwargs): return x
+    class pyfiglet:
+        @staticmethod
+        def figlet_format(text): return text
 
 def print_banner():
     banner = pyfiglet.figlet_format("Splitra")
     print(colored(banner, "cyan"))
-    print(Fore.YELLOW + Style.BRIGHT + "Created by Akashdip Mahapatra".center(80, " "))
+    print(colored("Created by Akashdip Mahapatra".center(80, " "), "yellow"))
     print("-" * 80)
 
 def list_videos():
@@ -52,7 +71,6 @@ def split_file(filename, chunk_size_mb):
     with open(os.path.join(folder_name, 'header.json'), 'w') as header:
         json.dump({'original_filename': filename, 'parts': part_files}, header, indent=4)
 
-    # Export script generation
     with open(os.path.join(folder_name, 'export_video.py'), 'w') as export_script:
         export_script.write(f"""import os
 import json
@@ -107,13 +125,39 @@ def recombine_video():
 
     print(Fore.GREEN + f"Video exported successfully to {output_path}")
 
-    # Option to delete chunk files
     delete = input("Do you want to delete the chunk files? (y/N): ").strip().lower()
     if delete == 'y':
         for part in data['parts']:
             os.remove(os.path.join(folder, part))
         os.remove(os.path.join(folder, 'header.json'))
-        print(Fore.RED + "Chunk files deleted.")
+
+        export_script = os.path.join(folder, 'export_video.py')
+        if os.path.exists(export_script):
+            os.remove(export_script)
+
+        if not os.listdir(folder):
+            os.rmdir(folder)
+            print(Fore.RED + f"Chunk folder '{folder}' removed.")
+        else:
+            print(Fore.YELLOW + f"Folder '{folder}' not empty, manual check recommended.")
+        print(Fore.GREEN + "Chunk files deleted successfully.")
+
+# This function waits for user input with a timeout
+def input_with_timeout(prompt, timeout=3):
+    user_input = [None]
+
+    def get_input():
+        user_input[0] = input(prompt)
+
+    thread = threading.Thread(target=get_input)
+    thread.daemon = True
+    thread.start()
+
+    thread.join(timeout)
+    if thread.is_alive():
+        print("\nNo input received. Defaulting to 'no'.")
+        return 'n'
+    return user_input[0]
 
 def main():
     print_banner()
@@ -157,6 +201,12 @@ def main():
             break
         else:
             print("Please enter 1 or 2.")
+
+    if has_colors:
+        cleanup = input_with_timeout("Do you want to remove installed libraries (to save space)? (y/N): ", 3).strip().lower()
+        if cleanup == 'y':
+            os.system(f"{sys.executable} -m pip uninstall -y colorama pyfiglet termcolor tqdm")
+            print("Dependencies removed.")
 
 if __name__ == "__main__":
     main()
