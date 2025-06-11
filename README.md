@@ -298,4 +298,12 @@ if __name__ == "__main__":
     main()
 ```
 
-## 🟢 combine this two script into one `splitra.py`
+## 🟢 combine this two script into one [`splitra.py`](https://github.com/akashdip2001/Splitra/blob/main/splitra.py)
+
+---
+
+## 🎯 Need Future Upgrade
+
+- If user want - add passward when Increft & pass must requird to Export.
+- add a Output folder for Output videos.
+- Fix error handaling.
