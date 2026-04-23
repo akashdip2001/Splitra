@@ -142,7 +142,7 @@ https://github.com/user-attachments/assets/b992d648-f023-4c1a-8933-595769b5c66c
 
 ### Will the exported video be exactly like the original? ✅ YES !!
 
-#### The code is doing a byte-level binary copy — it reads raw bytes during split ('rb') and writes raw bytes during recombine ('wb'). No encoding, decoding, compression, or re-muxing is happening. The chunks are simply concatenated back in order.
+#### The code is doing a byte-level binary copy — it reads raw bytes during split ( `rb` ) and writes raw bytes during recombine ( `wb` ). No encoding, decoding, compression, or re-muxing is happening. The chunks are simply concatenated back in order.
 
 #### This means the output file will be bit-for-bit identical to the original. Same size, same quality, same everything.
 
